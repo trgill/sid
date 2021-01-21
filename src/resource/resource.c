@@ -452,7 +452,22 @@ fail:
 static int _sd_signal_event_handler(sd_event_source *sd_es, const struct signalfd_siginfo *si, void *data)
 {
 	sid_resource_event_source_t *es = data;
-	return ((sid_resource_signal_event_handler_t) es->handler)(es, si, es->data);
+	switch (si->ssi_signo) {
+		case SIGTERM:
+		case SIGINT:
+			sid_resource_exit_event_loop(es->data);
+			break;
+		case SIGPIPE:
+			break;
+		case SIGHUP: /* TODO: Reload config on SIGHUP? */
+			break;
+		case SIGCHLD:
+			break;
+		default:
+			break;
+	};
+
+	return 1;
 }
 
 int sid_resource_create_signal_event_source(sid_resource_t *res, sid_resource_event_source_t **es, int signal,
@@ -509,8 +524,8 @@ int sid_resource_create_child_event_source(sid_resource_t *res, sid_resource_eve
 	if (prio && (r = sd_event_source_set_priority(sd_es, prio)) < 0)
 		goto fail;
 
-	if ((r = _create_event_source(res, name, sd_es, handler, data, es)) < 0)
-		goto fail;
+	// if ((r = _create_event_source(res, name, sd_es, handler, data, es)) < 0)
+	// 	goto fail;
 
 	return 0;
 fail:
